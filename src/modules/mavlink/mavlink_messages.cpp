@@ -73,6 +73,9 @@
 #include <uORB/topics/distance_sensor.h>
 #include <uORB/topics/camera_trigger.h>
 #include <uORB/topics/vehicle_land_detected.h>
+#include <uORB/topics/sonar_distance.h> //for sonar, by Clarence
+#include <uORB/topics/laser_distance.h> //for laser, by Clarence
+
 #include <drivers/drv_rc_input.h>
 #include <drivers/drv_pwm_output.h>
 #include <systemlib/err.h>
@@ -2464,6 +2467,128 @@ protected:
 	}
 };
 
+
+//the following class is written by Clarence
+class MavlinkStreamSonarDistance : public MavlinkStream
+{
+public:
+
+        const char *get_name() const
+    {
+        return MavlinkStreamSonarDistance::get_name_static();
+    }
+
+    static const char *get_name_static()
+    {
+        return "SONAR_DISTANCE";
+    }
+
+    uint8_t get_id()
+    {
+        return MAVLINK_MSG_ID_SONAR_DISTANCE;
+    }
+
+    unsigned get_size()
+    {
+        return MAVLINK_MSG_ID_SONAR_DISTANCE_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
+    }
+
+        static MavlinkStream *new_instance(Mavlink *mavlink)
+           { return new MavlinkStreamSonarDistance(mavlink); }
+
+private:
+        MavlinkOrbSubscription *_sonar_distance_sub;
+
+        /* do not allow top copying this class */
+    MavlinkStreamSonarDistance(MavlinkStreamSonarDistance &);
+    MavlinkStreamSonarDistance & operator = (const MavlinkStreamSonarDistance &);
+
+protected:
+        explicit MavlinkStreamSonarDistance(Mavlink *mavlink) : MavlinkStream(mavlink),
+        _sonar_distance_sub(_mavlink->add_orb_subscription(ORB_ID(sonar_distance)))
+    {}
+
+        void send(const hrt_abstime t)
+        {
+                struct sonar_distance_s values;
+                if (_sonar_distance_sub->update(&values)) {
+
+                  mavlink_sonar_distance_t msg;
+                  msg.sonar_front = values.sonar_front;
+                  msg.sonar_behind = values.sonar_behind;
+                  msg.sonar_left = values.sonar_left;
+                  msg.sonar_right = values.sonar_right;
+                  msg.sonar_up = values.sonar_up;
+                  msg.sonar_down = values.sonar_down;
+                  msg.sonar_cam = values.sonar_cam;
+
+                  _mavlink->send_message(MAVLINK_MSG_ID_SONAR_DISTANCE, &msg);
+
+                }
+
+        }
+
+};
+
+class MavlinkStreamLaserDistance : public MavlinkStream
+{
+public:
+
+        const char *get_name() const
+    {
+        return MavlinkStreamLaserDistance::get_name_static();
+    }
+
+    static const char *get_name_static()
+    {
+        return "LASER_DISTANCE";
+    }
+
+    uint8_t get_id()
+    {
+        return MAVLINK_MSG_ID_LASER_DISTANCE;
+    }
+
+    unsigned get_size()
+    {
+        return MAVLINK_MSG_ID_LASER_DISTANCE_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
+    }
+
+        static MavlinkStream *new_instance(Mavlink *mavlink)
+           { return new MavlinkStreamLaserDistance(mavlink); }
+
+private:
+        MavlinkOrbSubscription *_laser_distance_sub;
+
+        /* do not allow top copying this class */
+    MavlinkStreamLaserDistance(MavlinkStreamLaserDistance &);
+    MavlinkStreamLaserDistance & operator = (const MavlinkStreamLaserDistance &);
+
+protected:
+        explicit MavlinkStreamLaserDistance(Mavlink *mavlink) : MavlinkStream(mavlink),
+        _laser_distance_sub(_mavlink->add_orb_subscription(ORB_ID(laser_distance)))
+    {}
+
+        void send(const hrt_abstime t)
+        {
+                struct laser_distance_s values;
+                if (_laser_distance_sub->update(&values)) {
+
+                  mavlink_laser_distance_t msg;
+                  msg.min_distance = values.min_distance;
+                  msg.angle = values.angle;
+                  msg.laser_x = values.laser_x;
+                  msg.laser_y = values.laser_y;
+
+                  _mavlink->send_message(MAVLINK_MSG_ID_LASER_DISTANCE, &msg);
+
+                }
+
+        }
+
+};
+
+
 const StreamListItem *streams_list[] = {
 	new StreamListItem(&MavlinkStreamHeartbeat::new_instance, &MavlinkStreamHeartbeat::get_name_static),
 	new StreamListItem(&MavlinkStreamStatustext::new_instance, &MavlinkStreamStatustext::get_name_static),
@@ -2500,5 +2625,7 @@ const StreamListItem *streams_list[] = {
 	new StreamListItem(&MavlinkStreamCameraTrigger::new_instance, &MavlinkStreamCameraTrigger::get_name_static),
 	new StreamListItem(&MavlinkStreamDistanceSensor::new_instance, &MavlinkStreamDistanceSensor::get_name_static),
 	new StreamListItem(&MavlinkStreamExtendedSysState::new_instance, &MavlinkStreamExtendedSysState::get_name_static),
+        new StreamListItem(&MavlinkStreamSonarDistance::new_instance, &MavlinkStreamSonarDistance::get_name_static),
+        new StreamListItem(&MavlinkStreamLaserDistance::new_instance, &MavlinkStreamLaserDistance::get_name_static),
 	nullptr
 };
